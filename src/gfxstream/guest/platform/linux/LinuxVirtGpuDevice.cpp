@@ -143,6 +143,10 @@ struct VirtGpuCaps LinuxVirtGpuDevice::getCaps(void) { return mCaps; }
 
 int64_t LinuxVirtGpuDevice::getDeviceHandle(void) { return mDeviceHandle; }
 
+uint32_t LinuxVirtGpuDevice::getContextId(void) {
+    return 0;
+}
+
 VirtGpuResourcePtr LinuxVirtGpuDevice::createResource(uint32_t width, uint32_t height,
                                                       uint32_t stride, uint32_t size,
                                                       uint32_t virglFormat, uint32_t target,
@@ -213,6 +217,11 @@ VirtGpuResourcePtr LinuxVirtGpuDevice::importBlob(const struct VirtGpuExternalHa
 
     return std::make_shared<LinuxVirtGpuResource>(mDeviceHandle, blobHandle, info.res_handle,
                                                   static_cast<uint64_t>(info.size));
+}
+
+int LinuxVirtGpuDevice::copyResourcesToHost() {
+    
+    return 0;
 }
 
 int LinuxVirtGpuDevice::execBuffer(struct VirtGpuExecBuffer& execbuffer,

@@ -117,12 +117,16 @@ class ResourceTracker {
 
     using HostConnectionGetFunc = GfxStreamConnectionManager* (*)();
     using VkEncoderGetFunc = VkEncoder* (*)(GfxStreamConnectionManager*);
+    using InstanceGetFunc = VirtGpuDevice* (*)(GfxStreamConnectionManager*);
     using CleanupCallback = std::function<void()>;
 
     struct ThreadingCallbacks {
         HostConnectionGetFunc hostConnectionGetFunc = nullptr;
         VkEncoderGetFunc vkEncoderGetFunc = nullptr;
+        InstanceGetFunc instanceGetFunc = nullptr;
     };
+
+    int32_t device_fd;
 
     static uint32_t streamFeatureBits;
     static ThreadingCallbacks threadingCallbacks;
@@ -564,6 +568,7 @@ class ResourceTracker {
     static VkEncoder* getCommandBufferEncoder(VkCommandBuffer commandBuffer);
     static VkEncoder* getQueueEncoder(VkQueue queue);
     static VkEncoder* getThreadLocalEncoder();
+    static VirtGpuDevice* getThreadLocalInstance();
 
     static void setSeqnoPtr(uint32_t* seqnoptr);
     static ALWAYS_INLINE_GFXSTREAM uint32_t nextSeqno();

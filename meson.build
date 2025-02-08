@@ -11,7 +11,7 @@ project(
     'buildtype=debugoptimized',
     'b_ndebug=if-release',
     'c_std=c11',
-    'cpp_std=c++17',
+    'cpp_std=c++20',
     'rust_std=2021',
     'build.rust_std=2021',
   ],

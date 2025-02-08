@@ -13,6 +13,8 @@
 #include "VirtioGpuAddressSpaceStream.h"
 #include "VirtioGpuPipeStream.h"
 #include "util/log.h"
+#include <string>
+
 
 #define STREAM_BUFFER_SIZE (4 * 1024 * 1024)
 
@@ -21,6 +23,7 @@ struct ThreadInfo {
 };
 
 static thread_local ThreadInfo sThreadInfo;
+
 
 GfxStreamConnectionManager::GfxStreamConnectionManager(GfxStreamTransportType type,
                                                        VirtGpuCapset capset)
@@ -50,17 +53,25 @@ bool GfxStreamConnectionManager::initialize() {
         case GFXSTREAM_TRANSPORT_VIRTIO_GPU_PIPE: {
             VirtioGpuPipeStream* pipeStream =
                 new VirtioGpuPipeStream(STREAM_BUFFER_SIZE, INVALID_DESCRIPTOR);
+
             if (!pipeStream) {
                 mesa_loge("Failed to create VirtioGpu for host connection\n");
                 return false;
             }
+
+            // pipeStream->setDevice(VirtGpuDevice::getInstance(mCapset));
+
             if (pipeStream->connect() < 0) {
                 mesa_loge("Failed to connect to host (VirtioGpu)\n");
                 return false;
             }
 
+            // VirtGpuDevice::setDevice(pipeStream->getDevice());
+
             mDescriptor = pipeStream->getRendernodeFd();
-            VirtGpuDevice::getInstance(mCapset);
+
+            // VirtGpuDevice::getInstance(mCapset);
+
             mStream = pipeStream;
             break;
         }

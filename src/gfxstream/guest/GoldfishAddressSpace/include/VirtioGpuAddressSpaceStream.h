@@ -6,5 +6,6 @@
 #pragma once
 
 #include "AddressSpaceStream.h"
+#include <iostream>
 
 AddressSpaceStream* createVirtioGpuAddressSpaceStream(enum VirtGpuCapset capset);

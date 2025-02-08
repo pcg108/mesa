@@ -22,6 +22,7 @@
 #include <vndk/hardware_buffer.h>
 #endif
 #include <stdlib.h>
+#include <iostream>
 
 #include <algorithm>
 #include <chrono>
@@ -744,7 +745,9 @@ CoherentMemoryPtr ResourceTracker::freeCoherentMemoryLocked(VkDeviceMemory memor
 VkResult acquireSync(uint64_t syncId, int64_t& osHandle) {
     struct VirtGpuExecBuffer exec = {};
     struct gfxstreamAcquireSync acquireSync = {};
-    VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+
+    // VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+    VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
 
     acquireSync.hdr.opCode = GFXSTREAM_ACQUIRE_SYNC;
     acquireSync.syncId = syncId;
@@ -762,7 +765,9 @@ VkResult acquireSync(uint64_t syncId, int64_t& osHandle) {
 VkResult createFence(VkDevice device, uint64_t hostFenceHandle, int64_t& osHandle) {
     struct VirtGpuExecBuffer exec = {};
     struct gfxstreamCreateExportSyncVK exportSync = {};
-    VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+
+    // VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+    VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
 
     uint64_t hostDeviceHandle = get_host_u64_VkDevice(device);
 
@@ -1413,7 +1418,7 @@ void ResourceTracker::setupCaps(uint32_t& noRenderControlEnc) {
         mFeatureInfo.hasVulkanCreateResourcesWithRequirements = true;
         mFeatureInfo.hasVirtioGpuNext = true;
         mFeatureInfo.hasVirtioGpuNativeSync = true;
-        mFeatureInfo.hasVulkanBatchedDescriptorSetUpdate = true;
+        mFeatureInfo.hasVulkanBatchedDescriptorSetUpdate = false;
         mFeatureInfo.hasVulkanAsyncQsri = true;
 
         ResourceTracker::streamFeatureBits |= VULKAN_STREAM_FEATURE_NULL_OPTIONAL_STRINGS_BIT;
@@ -2944,8 +2949,12 @@ CoherentMemoryPtr ResourceTracker::createCoherentMemory(
         if (mFeatureInfo.hasVirtioGpuNext) {
             struct VirtGpuCreateBlob createBlob = {0};
             uint64_t hvaSizeId[3];
+
+            VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
+            uint32_t context_id = instance->getContextId();
+
             res = enc->vkGetMemoryHostAddressInfoGOOGLE(device, mem, &hvaSizeId[0], &hvaSizeId[1],
-                                                        &hvaSizeId[2], true /* do lock */);
+                                                        &hvaSizeId[2], context_id, true /* do lock */);
             if (res != VK_SUCCESS) {
                 mesa_loge(
                     "Failed to create coherent memory: vkMapMemoryIntoAddressSpaceGOOGLE "
@@ -2955,7 +2964,9 @@ CoherentMemoryPtr ResourceTracker::createCoherentMemory(
             }
             {
                 std::lock_guard<std::recursive_mutex> lock(mLock);
-                VirtGpuDevice* instance = VirtGpuDevice::getInstance((enum VirtGpuCapset)3);
+                // VirtGpuDevice* instance = VirtGpuDevice::getInstance((enum VirtGpuCapset)3);
+                // VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
+
                 createBlob.blobMem = kBlobMemHost3d;
                 createBlob.flags = kBlobFlagMappable;
                 createBlob.blobId = hvaSizeId[2];
@@ -3048,7 +3059,10 @@ VkResult ResourceTracker::allocateCoherentMemory(VkDevice device,
     if (mCaps.params[kParamCreateGuestHandle]) {
         struct VirtGpuCreateBlob createBlob = {0};
         struct VirtGpuExecBuffer exec = {};
-        VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+
+        // VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+        VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
+
         struct gfxstreamPlaceholderCommandVk placeholderCmd = {};
 
         createBlobInfo.blobId = ++mAtomicId;
@@ -3744,7 +3758,8 @@ VkResult ResourceTracker::on_vkAllocateMemory(void* context, VkResult input_resu
     VirtGpuResourcePtr bufferBlob = nullptr;
 #if defined(LINUX_GUEST_BUILD)
     if (exportDmabuf) {
-        VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+        // VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+        VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
         hasDedicatedImage =
             dedicatedAllocInfoPtr && (dedicatedAllocInfoPtr->image != VK_NULL_HANDLE);
         hasDedicatedBuffer =
@@ -4087,7 +4102,11 @@ VkResult ResourceTracker::on_vkMapMemory(void* context, VkResult host_result, Vk
         // NOTE: must not hold lock while calling into the encoder.
         lock.unlock();
         VkEncoder* enc = (VkEncoder*)context;
-        VkResult vkResult = enc->vkGetBlobGOOGLE(device, memory, /*doLock*/ false);
+
+        auto instance = ResourceTracker::getThreadLocalInstance();
+        uint32_t context_id = instance->getContextId();
+
+        VkResult vkResult = enc->vkGetBlobGOOGLE(device, memory, context_id, /*doLock*/ false);
         if (vkResult != VK_SUCCESS) {
             mesa_loge("%s: Failed to vkGetBlobGOOGLE().", __func__);
             return vkResult;
@@ -4102,7 +4121,9 @@ VkResult ResourceTracker::on_vkMapMemory(void* context, VkResult host_result, Vk
         createBlob.blobId = deviceMemoryInfo.blobId;
         createBlob.size = deviceMemoryInfo.coherentMemorySize;
 
-        auto blob = VirtGpuDevice::getInstance()->createBlob(createBlob);
+        // auto instance = VirtGpuDevice::getInstance();
+
+        auto blob = instance->createBlob(createBlob);
         if (!blob) return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
         VirtGpuResourceMappingPtr mapping = blob->createMapping();
@@ -5251,6 +5272,7 @@ void ResourceTracker::on_vkUpdateDescriptorSets(void* context, VkDevice device,
         enc->vkUpdateDescriptorSets(device, descriptorWriteCount, transformedWrites.data(),
                                     descriptorCopyCount, pDescriptorCopies, true /* do lock */);
     }
+
 }
 
 void ResourceTracker::on_vkDestroyImage(void* context, VkDevice device, VkImage image,
@@ -6019,6 +6041,14 @@ VkResult ResourceTracker::on_vkQueueSubmit(void* context, VkResult input_result,
                                            uint32_t submitCount, const VkSubmitInfo* pSubmits,
                                            VkFence fence) {
     MESA_TRACE_SCOPE("on_vkQueueSubmit");
+
+    // VirtGpuDevice* instance = VirtGpuDevice::getInstance();
+    VirtGpuDevice* instance = ResourceTracker::getThreadLocalInstance();
+
+    int res = instance->copyResourcesToHost();
+    if (res < 0) {
+        return VK_ERROR_INITIALIZATION_FAILED;
+    }
 
     /* From the Vulkan 1.3.204 spec:
      *
@@ -7656,6 +7686,13 @@ ALWAYS_INLINE_GFXSTREAM VkEncoder* ResourceTracker::getThreadLocalEncoder() {
     auto hostConn = ResourceTracker::threadingCallbacks.hostConnectionGetFunc();
     auto vkEncoder = ResourceTracker::threadingCallbacks.vkEncoderGetFunc(hostConn);
     return vkEncoder;
+}
+
+// static
+ALWAYS_INLINE_GFXSTREAM VirtGpuDevice* ResourceTracker::getThreadLocalInstance() {
+    auto hostConn = ResourceTracker::threadingCallbacks.hostConnectionGetFunc();
+    auto instance = ResourceTracker::threadingCallbacks.instanceGetFunc(hostConn);
+    return instance;
 }
 
 // static

@@ -177,6 +177,9 @@ class VirtGpuDevice {
   public:
    static VirtGpuDevice* getInstance(enum VirtGpuCapset capset = kCapsetNone,
                                      int32_t descriptor = INVALID_DESCRIPTOR);
+
+    static void setDevice(VirtGpuDevice* nDevice);
+
    static void resetInstance();
 
    VirtGpuDevice(enum VirtGpuCapset capset) : mCapset(capset) {}
@@ -186,6 +189,8 @@ class VirtGpuDevice {
 
    virtual int64_t getDeviceHandle(void) = 0;
 
+   virtual uint32_t getContextId() = 0;
+
    virtual struct VirtGpuCaps getCaps(void) = 0;
 
    virtual VirtGpuResourcePtr createBlob(const struct VirtGpuCreateBlob& blobCreate) = 0;
@@ -193,6 +198,8 @@ class VirtGpuDevice {
                                              uint32_t size, uint32_t virglFormat, uint32_t target,
                                              uint32_t bind) = 0;
    virtual VirtGpuResourcePtr importBlob(const struct VirtGpuExternalHandle& handle) = 0;
+
+   virtual int copyResourcesToHost() = 0;
 
    virtual int execBuffer(struct VirtGpuExecBuffer& execbuffer, const VirtGpuResource* blob) = 0;
 

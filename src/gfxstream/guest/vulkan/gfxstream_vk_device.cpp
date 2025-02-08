@@ -20,6 +20,9 @@
 #include "vk_instance.h"
 #include "vk_sync_dummy.h"
 
+#include "VirtioGpuPipeStream.h"
+#include <iostream>
+
 uint32_t gSeqno = 0;
 uint32_t gNoRenderControlEnc = 0;
 
@@ -49,9 +52,28 @@ static gfxstream::vk::VkEncoder* getVulkanEncoder(GfxStreamConnectionManager* mg
     return vkEncoder;
 }
 
+static VirtGpuDevice* getInstance(GfxStreamConnectionManager* mgr) {
+
+    // this should return the mDevice associated with this thread
+
+    VirtioGpuPipeStream* pipe_stream = (VirtioGpuPipeStream*) mgr->getStream();
+    
+    VirtGpuDevice* device = pipe_stream->getDevice();
+
+    if (device == nullptr) {
+        std::cout << "Error getting local mDevice" << std::endl;
+    }
+
+    return device;
+}
+
 static GfxStreamConnectionManager* getConnectionManager(void) {
     auto transport = renderControlGetTransport();
-    return GfxStreamConnectionManager::getThreadLocalInstance(transport, kCapsetGfxStreamVulkan);
+    auto mgr = GfxStreamConnectionManager::getThreadLocalInstance(transport, kCapsetGfxStreamVulkan);
+
+    gfxstream::vk::ResourceTracker::get()->setSeqnoPtr(&mgr->gSeqno);
+    
+    return mgr;
 }
 
 #define VK_HOST_CONNECTION(ret)                               \
@@ -107,8 +129,11 @@ static VkResult SetupInstanceForProcess(void) {
     gfxstream::vk::ResourceTracker::get()->setThreadingCallbacks({
         .hostConnectionGetFunc = getConnectionManager,
         .vkEncoderGetFunc = getVulkanEncoder,
+        .instanceGetFunc = getInstance,
     });
-    gfxstream::vk::ResourceTracker::get()->setSeqnoPtr(&gSeqno);
+
+    // gfxstream::vk::ResourceTracker::get()->setSeqnoPtr(&gSeqno);
+
     gfxstream::vk::VkEncoder* vkEnc = getVulkanEncoder(mgr);
     if (!vkEnc) {
         mesa_loge("vulkan: Failed to get Vulkan encoder\n");

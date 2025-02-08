@@ -12,6 +12,7 @@
 
 #include <cstring>
 #include <string>
+#include <iostream>
 
 #include "VirtGpu.h"
 #include "util/log.h"
@@ -37,12 +38,22 @@ int VirtioGpuPipeStream::getRendernodeFd() {
     if (m_device == nullptr) {
         return -1;
     }
+
     return m_device->getDeviceHandle();
 }
 
+VirtGpuDevice* VirtioGpuPipeStream::getDevice() {
+    return m_device.get();
+}
+
+void VirtioGpuPipeStream::setDevice(VirtGpuDevice* n_device) {
+    m_device.reset(n_device);
+}
+
 int VirtioGpuPipeStream::connect(const char* serviceName) {
+    
     if (!m_device) {
-        m_device.reset(createPlatformVirtGpuDevice(kCapsetNone, m_fd));
+        m_device.reset(createPlatformVirtGpuDevice(kCapsetGfxStreamVulkan, m_fd));
         if (!m_device) {
             mesa_loge("Failed to create VirtioGpuPipeStream VirtGpuDevice.");
             return -1;
@@ -74,12 +85,13 @@ int VirtioGpuPipeStream::connect(const char* serviceName) {
     wait();
 
     if (serviceName) {
-        writeFully(serviceName, strlen(serviceName) + 1);
+        writeFully(serviceName, strlen(serviceName)+1);
     } else {
         static const char kPipeString[] = "pipe:opengles";
         std::string pipeStr(kPipeString);
         writeFully(kPipeString, sizeof(kPipeString));
     }
+    
 
     return 0;
 }

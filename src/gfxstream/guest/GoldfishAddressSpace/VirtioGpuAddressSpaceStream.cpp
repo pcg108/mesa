@@ -93,6 +93,7 @@ AddressSpaceStream* createVirtioGpuAddressSpaceStream(enum VirtGpuCapset capset)
     blobCreate.blobMem = kBlobMemHost3d;
     blobCreate.flags = kBlobFlagMappable;
     blobCreate.size = ALIGN_POT(ringSize + bufferSize, blobAlignment);
+    std::cout << "address stream creation" << std::endl;
     blob = instance->createBlob(blobCreate);
     if (!blob)
         return nullptr;

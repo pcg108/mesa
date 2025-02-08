@@ -44,6 +44,8 @@ class GfxStreamConnectionManager {
     gfxstream::guest::IOStream* getStream();
     gfxstream::guest::IOStream* processPipeStream(GfxStreamTransportType transportType);
 
+    uint32_t gSeqno = 0;
+
    private:
     // intrusively refcounted
     gfxstream::guest::IOStream* mStream = nullptr;

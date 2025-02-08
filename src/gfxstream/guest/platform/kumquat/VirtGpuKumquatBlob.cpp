@@ -36,6 +36,7 @@ uint32_t VirtGpuKumquatResource::getResourceHandle() const { return mResourceHan
 uint64_t VirtGpuKumquatResource::getSize() const { return mSize; }
 
 VirtGpuResourceMappingPtr VirtGpuKumquatResource::createMapping() {
+
     int ret;
     struct drm_kumquat_map map {
         .bo_handle = mBlobHandle, .ptr = NULL, .size = mSize,
@@ -44,12 +45,14 @@ VirtGpuResourceMappingPtr VirtGpuKumquatResource::createMapping() {
     ret = virtgpu_kumquat_resource_map(mVirtGpu, &map);
     if (ret < 0) {
         mesa_loge("Mapping failed with %s for resource %u blob %u", strerror(errno),
-                  mResourceHandle, mBlobHandle);
+                mResourceHandle, mBlobHandle);
         return nullptr;
     }
 
     return std::make_shared<VirtGpuKumquatResourceMapping>(shared_from_this(), mVirtGpu,
-                                                           (uint8_t*)map.ptr, mSize);
+                                                            (uint8_t*)map.ptr, mSize);
+
+    
 }
 
 int VirtGpuKumquatResource::exportBlob(struct VirtGpuExternalHandle& handle) {

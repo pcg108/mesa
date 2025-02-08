@@ -6,6 +6,8 @@
 #pragma once
 
 #include <stdlib.h>
+#include <atomic>
+#include <memory>
 
 #include "VirtGpu.h"
 #include "gfxstream/guest/IOStream.h"
@@ -14,6 +16,7 @@
  * virtio-gpu DRM rendernode device to communicate with a goldfish-pipe
  * service on the host side.
  */
+
 
 class VirtioGpuPipeStream : public gfxstream::guest::IOStream {
    public:
@@ -34,6 +37,9 @@ class VirtioGpuPipeStream : public gfxstream::guest::IOStream {
     int recv(void* buf, size_t len);
 
     virtual int writeFully(const void* buf, size_t len);
+
+    VirtGpuDevice* getDevice();
+    void setDevice(VirtGpuDevice*);
 
    private:
     // sync. Also resets the write position.

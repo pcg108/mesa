@@ -140,10 +140,22 @@ struct VirtGpuCaps VirtGpuKumquatDevice::getCaps(void) { return mCaps; }
 
 int64_t VirtGpuKumquatDevice::getDeviceHandle(void) { return mDescriptor; }
 
+uint32_t VirtGpuKumquatDevice::getContextId(void) {
+    struct drm_kumquat_getcontextid get_contextid = {0};
+    int ret = virtgpu_kumquat_get_contextid(mVirtGpu, &get_contextid);
+    if (ret) {
+        mesa_logi("virtgpu unable to get context id");
+    }
+
+    return get_contextid.context_id;
+
+}
+
 VirtGpuResourcePtr VirtGpuKumquatDevice::createResource(uint32_t width, uint32_t height,
                                                         uint32_t stride, uint32_t size,
                                                         uint32_t virglFormat, uint32_t target,
                                                         uint32_t bind) {
+
     struct drm_kumquat_resource_create_3d create = {
         .target = target,
         .format = virglFormat,
@@ -165,7 +177,10 @@ VirtGpuResourcePtr VirtGpuKumquatDevice::createResource(uint32_t width, uint32_t
     }
 
     return std::make_shared<VirtGpuKumquatResource>(mVirtGpu, create.bo_handle, create.res_handle,
-                                                    static_cast<uint64_t>(create.size));
+                                                static_cast<uint64_t>(create.size));
+
+
+
 }
 
 VirtGpuResourcePtr VirtGpuKumquatDevice::createBlob(const struct VirtGpuCreateBlob& blobCreate) {
@@ -188,6 +203,15 @@ VirtGpuResourcePtr VirtGpuKumquatDevice::createBlob(const struct VirtGpuCreateBl
     return std::make_shared<VirtGpuKumquatResource>(mVirtGpu, create.bo_handle, create.res_handle,
                                                     blobCreate.size);
 }
+
+int VirtGpuKumquatDevice::copyResourcesToHost() {
+    int ret = virtgpu_kumquat_copy_resources_to_host(mVirtGpu);
+    if (ret < 0) {
+        mesa_loge("COPY_RESOURCES_TO_HOST failed with %s", strerror(errno));
+    }
+    return ret;
+}
+
 
 VirtGpuResourcePtr VirtGpuKumquatDevice::importBlob(const struct VirtGpuExternalHandle& handle) {
     int ret;
